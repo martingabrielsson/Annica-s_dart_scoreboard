@@ -473,6 +473,10 @@
   function mountBoard(holderEl, onScore){
     holderEl.innerHTML = buildBoardSVG();
     const svg = holderEl.querySelector("svg");
+    const ns = "http://www.w3.org/2000/svg";
+    const marksGroup = document.createElementNS(ns, "g");
+    marksGroup.setAttribute("id", "marksGroup");
+    svg.appendChild(marksGroup);
     svg.addEventListener("click", (evt) => {
       const pt = svg.createSVGPoint();
       pt.x = evt.clientX; pt.y = evt.clientY;
@@ -480,8 +484,44 @@
       const p = pt.matrixTransform(ctm);
       const result = scoreAt(p.x, p.y);
       if(navigator.vibrate) navigator.vibrate(12);
-      onScore(result.points, result.label);
+      spawnFlash(holderEl, p.x, p.y);
+      onScore(result.points, result.label, p.x, p.y);
     });
+  }
+
+  function xMarkMarkup(x, y){
+    const s = 10;
+    return `<g>
+      <line x1="${x-s}" y1="${y-s}" x2="${x+s}" y2="${y+s}" stroke="#000" stroke-width="6" stroke-linecap="round"/>
+      <line x1="${x-s}" y1="${y+s}" x2="${x+s}" y2="${y-s}" stroke="#000" stroke-width="6" stroke-linecap="round"/>
+      <line x1="${x-s}" y1="${y-s}" x2="${x+s}" y2="${y+s}" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+      <line x1="${x-s}" y1="${y+s}" x2="${x+s}" y2="${y-s}" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+    </g>`;
+  }
+
+  function drawMarks(holderEl, hits){
+    const svg = holderEl.querySelector("svg");
+    if(!svg) return;
+    const group = svg.querySelector("#marksGroup");
+    if(!group) return;
+    group.innerHTML = hits.filter(h => h).map(h => xMarkMarkup(h.x, h.y)).join("");
+  }
+
+  function spawnFlash(holderEl, x, y){
+    const svg = holderEl.querySelector("svg");
+    if(!svg) return;
+    const ns = "http://www.w3.org/2000/svg";
+    const g = document.createElementNS(ns, "g");
+    g.innerHTML = `
+      <circle cx="${x}" cy="${y}" r="6" fill="none" stroke="#fff86b" stroke-width="5">
+        <animate attributeName="r" from="6" to="40" dur="0.55s" fill="freeze"/>
+        <animate attributeName="opacity" values="1;1;0.2;1;0" keyTimes="0;0.15;0.4;0.65;1" dur="0.55s" fill="freeze"/>
+      </circle>
+      <circle cx="${x}" cy="${y}" r="6" fill="#fff86b">
+        <animate attributeName="opacity" values="1;0.15;1;0.15;0" dur="0.5s" fill="freeze"/>
+      </circle>`;
+    svg.appendChild(g);
+    setTimeout(() => g.remove(), 600);
   }
 
   /* ============================================================
@@ -616,19 +656,20 @@
   function startGame1(turns){
     const scores = {};
     players.forEach(p => scores[p.id] = 0);
-    g1 = { turnsTotal: turns, turnIndex: 0, playerIndex: 0, dartsThrown: 0, turnPoints: 0, dartLabels: [], scores, lastAction: null };
+    g1 = { turnsTotal: turns, turnIndex: 0, playerIndex: 0, dartsThrown: 0, turnPoints: 0, dartLabels: [], dartHits: [], scores, lastAction: null };
     setTopbar("Game #1 — High Score", `${turns} turns`);
     showScreen("screen-g1-play");
     mountBoard(document.getElementById("g1BoardHolder"), handleG1Dart);
     renderG1();
   }
 
-  function handleG1Dart(points, label){
+  function handleG1Dart(points, label, x, y){
     if(g1.dartsThrown >= 3) return;
     const pid = players[g1.playerIndex].id;
     g1.scores[pid] += points;
     g1.turnPoints += points;
     g1.dartLabels.push(label);
+    g1.dartHits.push(x !== undefined ? { x, y } : null);
     g1.dartsThrown++;
     g1.lastAction = { pid, points };
     renderG1();
@@ -640,12 +681,13 @@
     g1.scores[g1.lastAction.pid] -= g1.lastAction.points;
     g1.turnPoints -= g1.lastAction.points;
     g1.dartLabels.pop();
+    g1.dartHits.pop();
     g1.dartsThrown--;
     g1.lastAction = null;
     renderG1();
   });
   document.getElementById("g1NextBtn").addEventListener("click", () => {
-    g1.dartsThrown = 0; g1.turnPoints = 0; g1.dartLabels = []; g1.lastAction = null;
+    g1.dartsThrown = 0; g1.turnPoints = 0; g1.dartLabels = []; g1.dartHits = []; g1.lastAction = null;
     g1.playerIndex++;
     if(g1.playerIndex >= players.length){ g1.playerIndex = 0; g1.turnIndex++; }
     if(g1.turnIndex >= g1.turnsTotal){ finishGame1(); return; }
@@ -665,6 +707,7 @@
       row.appendChild(chip);
     }
     document.getElementById("g1TurnTotal").textContent = `This turn: ${g1.turnPoints} pts`;
+    drawMarks(document.getElementById("g1BoardHolder"), g1.dartHits);
     const done = g1.dartsThrown >= 3;
     document.getElementById("g1MissBtn").disabled = done;
     document.getElementById("g1UndoBtn").disabled = g1.dartsThrown === 0;
@@ -714,7 +757,7 @@
     players.forEach(p => { remaining[p.id] = start; dartsUsed[p.id] = 0; });
     cd = {
       start, recKey, remaining, dartsUsed,
-      playerIndex: 0, dartsThrown: 0, turnPoints: 0, dartLabels: [],
+      playerIndex: 0, dartsThrown: 0, turnPoints: 0, dartLabels: [], dartHits: [],
       turnStartRemaining: start, lastAction: null, busted: false
     };
     setTopbar(`Game — ${start}`, "First to exactly 0 wins");
@@ -723,11 +766,12 @@
     renderCD();
   }
 
-  function handleCDDart(points, label){
+  function handleCDDart(points, label, x, y){
     if(cd.dartsThrown >= 3 || cd.busted) return;
     const player = players[cd.playerIndex];
     const newRemaining = cd.remaining[player.id] - points;
     cd.dartLabels.push(label);
+    cd.dartHits.push(x !== undefined ? { x, y } : null);
     cd.dartsThrown++;
     cd.dartsUsed[player.id]++;
     cd.lastAction = { pid: player.id, points, prevRemaining: cd.remaining[player.id] };
@@ -758,13 +802,14 @@
     cd.remaining[cd.lastAction.pid] = cd.lastAction.prevRemaining;
     cd.turnPoints -= cd.lastAction.points;
     cd.dartLabels.pop();
+    cd.dartHits.pop();
     cd.dartsThrown--;
     cd.dartsUsed[cd.lastAction.pid]--;
     cd.lastAction = null;
     renderCD();
   });
   document.getElementById("cdNextBtn").addEventListener("click", () => {
-    cd.dartsThrown = 0; cd.turnPoints = 0; cd.dartLabels = []; cd.lastAction = null; cd.busted = false;
+    cd.dartsThrown = 0; cd.turnPoints = 0; cd.dartLabels = []; cd.dartHits = []; cd.lastAction = null; cd.busted = false;
     cd.playerIndex++;
     if(cd.playerIndex >= players.length) cd.playerIndex = 0;
     cd.turnStartRemaining = cd.remaining[players[cd.playerIndex].id];
@@ -787,6 +832,7 @@
       row.appendChild(chip);
     }
     document.getElementById("cdTurnTotal").textContent = cd.busted ? "Turn voided" : `This turn: ${cd.turnPoints} pts`;
+    drawMarks(document.getElementById("cdBoardHolder"), cd.dartHits);
 
     const done = cd.dartsThrown >= 3;
     document.getElementById("cdMissBtn").disabled = done;
