@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Dart">
+<meta name="theme-color" content="#c2185b">
+<title>🎯 Dart Scorekort</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8E%AF%3C/text%3E%3C/svg%3E">
+<style>
+  :root{
+    --pink:#ff5fa2;
+    --pink-light:#ffd1e6;
+    --pink-pale:#fff0f6;
+    --pink-dark:#c2185b;
+    --pink-deep:#7a0d3c;
+    --ink:#2b0a1a;
+    --cream:#fff6ec;
+    --green:#1f8a4c;
+    --red:#d62839;
+    --black:#1b1b1b;
+    --gold:#ffc83d;
+    --shadow: 0 8px 24px rgba(122,13,60,0.25);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+  html,body{
+    margin:0; padding:0; height:100%;
+    font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color:var(--ink);
+    background:var(--pink-pale);
+    overscroll-behavior:none;
+  }
+  #app{ min-height:100vh; min-height:100dvh; display:flex; flex-direction:column; }
+  button{ font-family:inherit; cursor:pointer; }
+  .hidden{ display:none !important; }
+  .screen{ display:none; flex:1; flex-direction:column; padding:16px; padding-bottom:max(16px, env(safe-area-inset-bottom)); }
+  .screen.active{ display:flex; }
+
+  /* ---------- TOP BAR ---------- */
+  #topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:10px 14px; padding-top:max(10px, env(safe-area-inset-top));
+    background:linear-gradient(135deg, var(--pink-dark), var(--pink-deep));
+    color:#fff; box-shadow:var(--shadow); position:relative; z-index:5;
+  }
+  #topbar .tb-title{ font-weight:700; font-size:1.05rem; }
+  #topbar .tb-sub{ font-size:0.78rem; opacity:0.85; }
+  #homeBtn{
+    background:rgba(255,255,255,0.18); border:none; color:#fff; border-radius:10px;
+    padding:8px 12px; font-size:1.1rem; line-height:1;
+  }
+  #homeBtn:active{ background:rgba(255,255,255,0.32); }
+
+  /* ---------- SETUP SCREEN ---------- */
+  #screen-setup{ position:relative; overflow:hidden; padding:0; }
+  #setupBg{
+    position:absolute; inset:0; z-index:0;
+    background:
+      radial-gradient(circle at center, transparent 0 9%, var(--pink-light) 9% 11%, transparent 11% 19%, var(--pink) 19% 21%, transparent 21% 34%, var(--pink-light) 34% 37%, transparent 37% 44%, var(--pink-dark) 44% 47%, transparent 47% 100%),
+      conic-gradient(from 0deg, rgba(194,24,91,0.10) 0 9deg, transparent 9deg 18deg);
+    background-color:var(--pink-pale);
+  }
+  #setupBg::after{
+    content:""; position:absolute; inset:0;
+    background:radial-gradient(circle at 50% 38%, rgba(255,255,255,0.55), rgba(255,240,246,0.92) 70%);
+  }
+  .setup-wrap{
+    position:relative; z-index:1; padding:18px 16px max(18px, env(safe-area-inset-bottom));
+    max-width:520px; margin:0 auto; width:100%; flex:1; display:flex; flex-direction:column;
+  }
+  .app-title{
+    text-align:center; margin:6px 0 4px; font-size:1.9rem; font-weight:800; color:var(--pink-deep);
+    text-shadow:0 2px 0 rgba(255,255,255,0.6);
+  }
+  .app-sub{ text-align:center; color:var(--pink-dark); font-size:0.9rem; margin-bottom:18px; }
+
+  .card{
+    background:rgba(255,255,255,0.88); backdrop-filter:blur(4px);
+    border-radius:18px; padding:16px; box-shadow:var(--shadow);
+    border:1px solid rgba(255,255,255,0.6);
+  }
+  .add-row{ display:flex; gap:8px; }
+  .add-row input{
+    flex:1; padding:13px 14px; border-radius:12px; border:2px solid var(--pink-light);
+    font-size:1rem; outline:none; background:#fff;
+  }
+  .add-row input:focus{ border-color:var(--pink); }
+  .add-row button{
+    padding:0 18px; border:none; border-radius:12px; background:var(--pink-dark); color:#fff;
+    font-weight:700; font-size:1.4rem;
+  }
+  .add-row button:disabled{ background:#ccc; }
+  .add-row button:active:not(:disabled){ background:var(--pink-deep); }
+
+  .player-count{ text-align:center; font-size:0.8rem; color:var(--pink-dark); margin:8px 0 4px; font-weight:600; }
+
+  #playerList{ list-style:none; margin:10px 0 0; padding:0; display:flex; flex-direction:column; gap:8px; max-height:32vh; overflow-y:auto; }
+  #playerList li{
+    display:flex; align-items:center; justify-content:space-between;
+    background:var(--pink-pale); border:1.5px solid var(--pink-light); border-radius:12px;
+    padding:10px 12px; font-weight:600;
+  }
+  #playerList li .pnum{
+    display:inline-flex; align-items:center; justify-content:center; width:24px; height:24px;
+    background:var(--pink); color:#fff; border-radius:50%; font-size:0.75rem; margin-right:10px;
+  }
+  #playerList li .pname{ flex:1; }
+  #playerList li button{
+    border:none; background:transparent; color:var(--pink-dark); font-size:1.3rem; padding:2px 6px;
+  }
+  .empty-hint{ text-align:center; color:#b97; font-size:0.85rem; padding:14px 0; opacity:0.7;}
+
+  .game-buttons{ display:flex; flex-direction:column; gap:12px; margin-top:18px; }
+  .game-btn{
+    border:none; border-radius:16px; padding:16px 18px; font-size:1.05rem; font-weight:800;
+    color:#fff; text-align:left; box-shadow:var(--shadow); position:relative;
+    display:flex; align-items:center; gap:12px;
+  }
+  .game-btn .emoji{ font-size:1.6rem; }
+  .game-btn small{ display:block; font-weight:500; font-size:0.78rem; opacity:0.9; margin-top:2px;}
+  .game-btn:disabled{ opacity:0.45; }
+  #btnGame1{ background:linear-gradient(135deg,#ff7eb3,#c2185b); }
+  #btnGame2{ background:linear-gradient(135deg,#ff9a5a,#d6432b); }
+  #btnGame3{ background:linear-gradient(135deg,#9b59ff,#5b21b6); }
+  #btnGame4{ background:linear-gradient(135deg,#22c1c3,#1e6f9f); }
+  .game-btn:active:not(:disabled){ transform:scale(0.98); }
+
+  .records-toggle{
+    display:block; margin:16px auto 0; background:none; border:none; color:var(--pink-deep);
+    font-weight:700; font-size:0.85rem; text-decoration:underline;
+  }
+  #recordsPanel{
+    margin-top:10px; background:rgba(255,255,255,0.92); border-radius:14px; padding:12px 14px;
+    font-size:0.85rem;
+  }
+  #recordsPanel h4{ margin:6px 0 4px; color:var(--pink-deep); font-size:0.85rem; }
+  #recordsPanel ol{ margin:0 0 8px; padding-left:20px; }
+
+  /* ---------- GENERIC SUB-SCREEN HEADER ---------- */
+  .screen-inner{ max-width:760px; margin:0 auto; width:100%; flex:1; display:flex; flex-direction:column; }
+  h2.section-title{ text-align:center; color:var(--pink-deep); margin:10px 0 18px; }
+
+  /* ---------- TURN OPTION BUTTONS ---------- */
+  .turn-options{ display:flex; flex-direction:column; gap:14px; max-width:420px; margin:0 auto; width:100%;}
+  .turn-opt{
+    border:none; border-radius:16px; padding:20px; background:#fff; box-shadow:var(--shadow);
+    border:2px solid var(--pink-light); font-weight:800; font-size:1.2rem; color:var(--pink-deep);
+  }
+  .turn-opt small{ display:block; font-weight:500; font-size:0.8rem; color:#888; margin-top:4px;}
+  .turn-opt:active{ background:var(--pink-light); }
+  .back-link{
+    margin:18px auto 0; background:none; border:none; color:var(--pink-dark); font-weight:700;
+    font-size:0.95rem;
+  }
+
+  /* ---------- PLAY LAYOUT ---------- */
+  .play-layout{ display:flex; flex-direction:column; gap:16px; flex:1; max-width:480px; margin:0 auto; width:100%; }
+  .player-banner{
+    text-align:center; background:linear-gradient(135deg, var(--pink), var(--pink-dark));
+    color:#fff; border-radius:16px; padding:12px 14px; box-shadow:var(--shadow);
+  }
+  .player-banner .pb-name{ font-size:1.3rem; font-weight:800; }
+  .player-banner .pb-sub{ font-size:0.85rem; opacity:0.92; margin-top:2px; }
+  .player-banner .pb-remaining{ font-size:2.6rem; font-weight:900; line-height:1.1; margin-top:4px; text-shadow:0 2px 6px rgba(0,0,0,0.25);}
+
+  .board-wrap{ display:flex; justify-content:center; }
+  .board-wrap svg{ width:100%; max-width:380px; height:auto; touch-action:manipulation; }
+
+  .dart-row{ display:flex; justify-content:center; gap:10px; }
+  .dart-chip{
+    background:#fff; border:2px solid var(--pink-light); border-radius:10px; padding:8px 10px;
+    min-width:54px; text-align:center; font-weight:800; color:var(--pink-deep); font-size:0.9rem;
+    box-shadow:0 2px 6px rgba(0,0,0,0.08);
+  }
+  .dart-chip.empty{ color:#ccc; border-style:dashed; }
+  .turn-total{ text-align:center; font-weight:700; color:var(--pink-dark); font-size:0.95rem; }
+
+  .controls-row{ display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
+  .ctrl-btn{
+    border:none; border-radius:12px; padding:13px 18px; font-weight:800; font-size:0.95rem;
+    box-shadow:0 4px 10px rgba(0,0,0,0.12);
+  }
+  .ctrl-miss{ background:#444; color:#fff; }
+  .ctrl-undo{ background:#fff; color:var(--pink-dark); border:2px solid var(--pink-light); }
+  .ctrl-next{ background:linear-gradient(135deg,#2bb673,#1f8a4c); color:#fff; width:100%; padding:15px; font-size:1.05rem; }
+  .ctrl-btn:disabled{ opacity:0.4; }
+  .ctrl-btn:active:not(:disabled){ transform:scale(0.97); }
+
+  .bust-banner{
+    text-align:center; background:var(--red); color:#fff; font-weight:800; border-radius:12px;
+    padding:10px; animation:pulse 0.6s ease;
+  }
+  @keyframes pulse{ 0%{transform:scale(0.9); opacity:0;} 60%{transform:scale(1.03);} 100%{transform:scale(1); opacity:1;} }
+
+  .mini-board{ background:#fff; border-radius:14px; padding:12px 14px; box-shadow:var(--shadow); }
+  .mini-board h4{ margin:0 0 8px; color:var(--pink-deep); font-size:0.85rem; text-transform:uppercase; letter-spacing:0.04em;}
+  .mini-row{
+    display:flex; justify-content:space-between; align-items:center; padding:7px 4px;
+    border-bottom:1px solid var(--pink-pale); font-weight:700; font-size:0.92rem;
+  }
+  .mini-row:last-child{ border-bottom:none; }
+  .mini-row.current{ color:var(--pink-dark); }
+  .mini-row .rank{ width:22px; color:#bbb; font-weight:800; }
+  .mini-row .nm{ flex:1; }
+  .mini-row .val{ font-weight:900; }
+
+  .hint-text{ text-align:center; font-size:0.78rem; color:#a37; opacity:0.75; margin-top:-6px; }
+
+  /* ---------- RESULTS ---------- */
+  .results-wrap{ max-width:480px; margin:0 auto; width:100%; flex:1; display:flex; flex-direction:column; gap:16px; }
+  .winner-banner{
+    text-align:center; background:linear-gradient(135deg, var(--gold), #ff8a3d); color:#5a2c00;
+    border-radius:18px; padding:22px 16px; box-shadow:var(--shadow);
+  }
+  .winner-banner .wb-emoji{ font-size:2.6rem; }
+  .winner-banner .wb-name{ font-size:1.6rem; font-weight:900; margin-top:4px; }
+  .winner-banner .wb-detail{ font-size:0.9rem; margin-top:4px; font-weight:600; }
+
+  .standings{ background:#fff; border-radius:16px; padding:8px 14px; box-shadow:var(--shadow); }
+  .standings .srow{ display:flex; align-items:center; gap:10px; padding:10px 2px; border-bottom:1px solid var(--pink-pale); }
+  .standings .srow:last-child{ border-bottom:none; }
+  .standings .srow .medal{ width:26px; text-align:center; font-size:1.1rem; }
+  .standings .srow .nm{ flex:1; font-weight:700; }
+  .standings .srow .val{ font-weight:900; color:var(--pink-deep); }
+
+  .result-actions{ display:flex; flex-direction:column; gap:10px; }
+  .result-actions button{
+    border:none; border-radius:14px; padding:14px; font-weight:800; font-size:0.95rem; box-shadow:var(--shadow);
+  }
+  .btn-primary{ background:linear-gradient(135deg, var(--pink), var(--pink-dark)); color:#fff; }
+  .btn-secondary{ background:#fff; color:var(--pink-dark); border:2px solid var(--pink-light) !important; }
+
+  /* ---------- TABLET LAYOUT ---------- */
+  @media (min-width: 820px){
+    .play-layout{
+      max-width:880px; flex-direction:row; align-items:flex-start; gap:24px;
+    }
+    .play-main{ flex:1; display:flex; flex-direction:column; gap:16px; }
+    .play-side{ width:300px; display:flex; flex-direction:column; gap:14px; position:sticky; top:14px; }
+    .board-wrap svg{ max-width:440px; }
+    .setup-wrap{ max-width:640px; }
+  }
+  .play-main{ display:flex; flex-direction:column; gap:16px; }
+  .play-side{ display:flex; flex-direction:column; gap:14px; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <header id="topbar" class="hidden">
+    <div>
+      <div class="tb-title" id="tbTitle">Spel</div>
+      <div class="tb-sub" id="tbSub"></div>
+    </div>
+    <button id="homeBtn">🏠</button>
+  </header>
+
+  <main id="screens">
+
+    <!-- ============ SETUP SCREEN ============ -->
+    <section id="screen-setup" class="screen active">
+      <div id="setupBg"></div>
+      <div class="setup-wrap">
+        <div class="app-title">🎯 Annica's Dart Scorekort</div>
+        <div class="app-sub">Lägg till dina spelare, välj sedan ett spel</div>
+
+        <div class="card">
+          <div class="add-row">
+            <input id="playerNameInput" type="text" placeholder="Spelarnamn" maxlength="16" autocomplete="off">
+            <button id="addPlayerBtn">+</button>
+          </div>
+          <div class="player-count" id="playerCount">0 / 10 spelare</div>
+          <ul id="playerList"></ul>
+          <div class="empty-hint" id="emptyHint">Inga spelare ännu — lägg till minst 1 för att börja</div>
+        </div>
+
+        <div class="game-buttons">
+          <button class="game-btn" id="btnGame1" disabled>
+            <span class="emoji">🎯</span>
+            <span>Spel #1 — Högsta Poäng<small>Flest poäng vinner · välj 3, 4 eller 5 omgångar</small></span>
+          </button>
+          <button class="game-btn" id="btnGame2" disabled>
+            <span class="emoji">🔥</span>
+            <span>Spel #2 — 301<small>Räkna ner från 301 · först till exakt 0 vinner</small></span>
+          </button>
+          <button class="game-btn" id="btnGame3" disabled>
+            <span class="emoji">💥</span>
+            <span>Spel #3 — 501<small>Räkna ner från 501 · först till exakt 0 vinner</small></span>
+          </button>
+          <button class="game-btn" id="btnGame4" disabled>
+            <span class="emoji">🌀</span>
+            <span>Spel #4 — Dartöverraskning<small>Flest poäng vinner · ringtavla · 3, 4 eller 5 omgångar</small></span>
+          </button>
+        </div>
+
+        <button class="records-toggle" id="recordsToggle">🏆 Visa alla tiders rekord</button>
+        <div id="recordsPanel" class="hidden"></div>
+      </div>
+    </section>
+
+    <!-- ============ GAME 1 SETUP (turns) ============ -->
+    <section id="screen-g1-setup" class="screen">
+      <div class="screen-inner">
+        <div class="app-sub" id="g1SetupLabel" style="font-weight:700; margin-bottom:-6px;">Spel #1 — Högsta Poäng</div>
+        <h2 class="section-title">Hur många omgångar?</h2>
+        <div class="turn-options">
+          <button class="turn-opt" data-turns="3">3 Omgångar<small>Snabbt spel</small></button>
+          <button class="turn-opt" data-turns="4">4 Omgångar<small>Standardspel</small></button>
+          <button class="turn-opt" data-turns="5">5 Omgångar<small>Långt spel</small></button>
+        </div>
+        <button class="back-link" id="g1BackBtn">← Tillbaka till spelare</button>
+      </div>
+    </section>
+
+    <!-- ============ GAME 1 PLAY ============ -->
+    <section id="screen-g1-play" class="screen">
+      <div class="play-layout">
+        <div class="play-main">
+          <div class="player-banner">
+            <div class="pb-name" id="g1PlayerName">—</div>
+            <div class="pb-sub" id="g1TurnInfo">Omgång 1 av 3 · Pil 1 av 3</div>
+          </div>
+          <div class="board-wrap"><div id="g1BoardHolder"></div></div>
+          <div class="hint-text">Tryck på tavlan där pilen träffade</div>
+          <div class="dart-row" id="g1DartRow"></div>
+          <div class="turn-total" id="g1TurnTotal">Denna omgång: 0 poäng</div>
+          <div class="controls-row">
+            <button class="ctrl-btn ctrl-miss" id="g1MissBtn">❌ Bom (0)</button>
+            <button class="ctrl-btn ctrl-undo" id="g1UndoBtn" disabled>↩️ Ångra</button>
+          </div>
+          <button class="ctrl-btn ctrl-next hidden" id="g1NextBtn">Nästa Spelare ➜</button>
+        </div>
+        <div class="play-side">
+          <div class="mini-board">
+            <h4>Topplista</h4>
+            <div id="g1Leaderboard"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ GAME 1 RESULTS ============ -->
+    <section id="screen-g1-results" class="screen">
+      <div class="results-wrap">
+        <div class="winner-banner">
+          <div class="wb-emoji">🏆</div>
+          <div class="wb-name" id="g1WinnerName">—</div>
+          <div class="wb-detail" id="g1WinnerDetail"></div>
+        </div>
+        <div class="standings" id="g1Standings"></div>
+        <div class="result-actions">
+          <button class="btn-primary" id="g1PlayAgainBtn">🔁 Spela Igen — Samma Spelare</button>
+          <button class="btn-secondary" id="g1NewPlayersBtn">🏠 Tillbaka till Spelare</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ COUNTDOWN PLAY (301 / 501) ============ -->
+    <section id="screen-cd-play" class="screen">
+      <div class="play-layout">
+        <div class="play-main">
+          <div class="player-banner">
+            <div class="pb-name" id="cdPlayerName">—</div>
+            <div class="pb-sub" id="cdDartInfo">Pil 1 av 3</div>
+            <div class="pb-remaining" id="cdRemaining">301</div>
+          </div>
+          <div id="cdBustBanner" class="bust-banner hidden">💥 BOM! Omgångens poäng ogiltig</div>
+          <div class="board-wrap"><div id="cdBoardHolder"></div></div>
+          <div class="hint-text">Tryck på tavlan där pilen träffade</div>
+          <div class="dart-row" id="cdDartRow"></div>
+          <div class="turn-total" id="cdTurnTotal">Denna omgång: 0 poäng</div>
+          <div class="controls-row">
+            <button class="ctrl-btn ctrl-miss" id="cdMissBtn">❌ Bom (0)</button>
+            <button class="ctrl-btn ctrl-undo" id="cdUndoBtn" disabled>↩️ Ångra</button>
+          </div>
+          <button class="ctrl-btn ctrl-next hidden" id="cdNextBtn">Nästa Spelare ➜</button>
+        </div>
+        <div class="play-side">
+          <div class="mini-board">
+            <h4>Ställning (lägst vinner)</h4>
+            <div id="cdLeaderboard"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ COUNTDOWN RESULTS ============ -->
+    <section id="screen-cd-results" class="screen">
+      <div class="results-wrap">
+        <div class="winner-banner">
+          <div class="wb-emoji">🏆</div>
+          <div class="wb-name" id="cdWinnerName">—</div>
+          <div class="wb-detail" id="cdWinnerDetail"></div>
+        </div>
+        <div class="standings" id="cdStandings"></div>
+        <div class="result-actions">
+          <button class="btn-primary" id="cdPlayAgainBtn">🔁 Spela Igen — Samma Spelare</button>
+          <button class="btn-secondary" id="cdNewPlayersBtn">🏠 Tillbaka till Spelare</button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ============================================================
+     DARTBOARD MATH (shared by every game)
+  ============================================================ */
+  const SECTOR_ORDER = [20,1,18,4,13,6,10,15,2,17,3,19,7,16,8,11,14,9,12,5];
+  const RINGS = { bullInner:10, bullOuter:26, tripleInner:110, tripleOuter:126, doubleInner:176, doubleOuter:190, labelR:208 };
+
+  function polarToXY(angleDeg, r){
+    const rad = (angleDeg - 90) * Math.PI / 180;
+    return [ r*Math.cos(rad), r*Math.sin(rad) ];
+  }
+  function arcWedge(startA, endA, rInner, rOuter){
+    const [x1,y1] = polarToXY(startA, rOuter);
+    const [x2,y2] = polarToXY(endA, rOuter);
+    const [x3,y3] = polarToXY(endA, rInner);
+    const [x4,y4] = polarToXY(startA, rInner);
+    return `M ${x1.toFixed(2)} ${y1.toFixed(2)} A ${rOuter} ${rOuter} 0 0 1 ${x2.toFixed(2)} ${y2.toFixed(2)} L ${x3.toFixed(2)} ${y3.toFixed(2)} A ${rInner} ${rInner} 0 0 0 ${x4.toFixed(2)} ${y4.toFixed(2)} Z`;
+  }
+
+  function buildBoardSVG(){
+    let paths = "";
+    for(let i=0;i<20;i++){
+      const value = SECTOR_ORDER[i];
+      const startA = i*18 - 9, endA = i*18 + 9;
+      const evenSingle = i % 2 === 0 ? "#ffffff" : "#161616";
+      const evenDouble = i % 2 === 0 ? "#1f8a4c" : "#d62839";
+      // inner single
+      paths += `<path d="${arcWedge(startA,endA,RINGS.bullOuter,RINGS.tripleInner)}" fill="${evenSingle}" stroke="#555" stroke-width="0.5"/>`;
+      // triple ring
+      paths += `<path d="${arcWedge(startA,endA,RINGS.tripleInner,RINGS.tripleOuter)}" fill="${evenDouble}" stroke="#555" stroke-width="0.5"/>`;
+      // outer single
+      paths += `<path d="${arcWedge(startA,endA,RINGS.tripleOuter,RINGS.doubleInner)}" fill="${evenSingle}" stroke="#555" stroke-width="0.5"/>`;
+      // double ring
+      paths += `<path d="${arcWedge(startA,endA,RINGS.doubleInner,RINGS.doubleOuter)}" fill="${evenDouble}" stroke="#555" stroke-width="0.5"/>`;
+    }
+    // bull rings
+    paths += `<circle cx="0" cy="0" r="${RINGS.bullOuter}" fill="#1f8a4c" stroke="#555" stroke-width="0.5"/>`;
+    paths += `<circle cx="0" cy="0" r="${RINGS.bullInner}" fill="#d62839" stroke="#555" stroke-width="0.5"/>`;
+    // outer rim
+    paths += `<circle cx="0" cy="0" r="${RINGS.doubleOuter}" fill="none" stroke="#fff" stroke-width="2"/>`;
+    // labels
+    let labels = "";
+    for(let i=0;i<20;i++){
+      const value = SECTOR_ORDER[i];
+      const [x,y] = polarToXY(i*18, RINGS.labelR);
+      labels += `<text x="${x.toFixed(1)}" y="${(y+6).toFixed(1)}" text-anchor="middle" font-size="20" font-weight="800" fill="#ffffff">${value}</text>`;
+    }
+    return `<svg viewBox="-225 -225 450 450" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="0" cy="0" r="222" fill="#000000"/>
+      ${paths}
+      ${labels}
+    </svg>`;
+  }
+
+  function scoreAt(x, y){
+    const r = Math.sqrt(x*x + y*y);
+    if(r > RINGS.doubleOuter) return { points:0, label:"UTE" };
+    if(r <= RINGS.bullInner) return { points:50, label:"BULL" };
+    if(r <= RINGS.bullOuter) return { points:25, label:"25" };
+    let angle = Math.atan2(y, x) * 180/Math.PI; // -180..180, 0 = right
+    let normalized = ((angle + 90) % 360 + 360) % 360; // 0 = top, clockwise
+    let segIndex = Math.floor(((normalized + 9) % 360) / 18);
+    const value = SECTOR_ORDER[segIndex];
+    if(r >= RINGS.tripleInner && r <= RINGS.tripleOuter) return { points: value*3, label: "T"+value };
+    if(r >= RINGS.doubleInner && r <= RINGS.doubleOuter) return { points: value*2, label: "D"+value };
+    return { points: value, label: "S"+value };
+  }
+
+  /* ---------- "Dart Surprise" board: concentric numbered rings ---------- */
+  const SURPRISE_ZONES = [
+    { outerR:200, innerR:180, value:1 },
+    { outerR:180, innerR:160, value:2 },
+    { outerR:160, innerR:140, value:3 },
+    { outerR:140, innerR:120, value:4 },
+    { outerR:120, innerR:100, value:5 },
+    { outerR:100, innerR:80,  value:6 },
+    { outerR:80,  innerR:60,  value:7 },
+    { outerR:60,  innerR:40,  value:8 },
+    { outerR:40,  innerR:20,  value:9 },
+    { outerR:20,  innerR:0,   value:10 }
+  ];
+
+  function buildSurpriseBoardSVG(){
+    let circles = "";
+    SURPRISE_ZONES.forEach(zone => {
+      const fill = zone.value === 10 ? "#d62839" : (zone.value % 2 === 1 ? "#000000" : "#ffffff");
+      circles += `<circle cx="0" cy="0" r="${zone.outerR}" fill="${fill}" stroke="#777" stroke-width="0.5"/>`;
+    });
+    let labels = "";
+    SURPRISE_ZONES.forEach(zone => {
+      if(zone.value === 10) return;
+      const midR = (zone.outerR + zone.innerR) / 2;
+      const textColor = zone.value % 2 === 1 ? "#ffffff" : "#000000";
+      labels += `<text x="0" y="${(-midR+6).toFixed(1)}" text-anchor="middle" font-size="16" font-weight="800" fill="${textColor}">${zone.value}</text>`;
+      labels += `<text x="0" y="${(midR+6).toFixed(1)}" text-anchor="middle" font-size="16" font-weight="800" fill="${textColor}">${zone.value}</text>`;
+    });
+    return `<svg viewBox="-225 -225 450 450" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="0" cy="0" r="222" fill="#000000"/>
+      ${circles}
+      ${labels}
+    </svg>`;
+  }
+
+  function scoreAtSurprise(x, y){
+    const r = Math.sqrt(x*x + y*y);
+    if(r > 200) return { points:0, label:"UTE" };
+    for(const zone of SURPRISE_ZONES){
+      if(r <= zone.outerR && r >= zone.innerR){
+        return { points: zone.value, label: zone.value === 10 ? "BULL" : "R"+zone.value };
+      }
+    }
+    return { points:10, label:"BULL" };
+  }
+
+  function mountBoard(holderEl, onScore, variant){
+    const isSurprise = variant === "surprise";
+    holderEl.innerHTML = isSurprise ? buildSurpriseBoardSVG() : buildBoardSVG();
+    const svg = holderEl.querySelector("svg");
+    const ns = "http://www.w3.org/2000/svg";
+    const marksGroup = document.createElementNS(ns, "g");
+    marksGroup.setAttribute("id", "marksGroup");
+    svg.appendChild(marksGroup);
+    svg.addEventListener("click", (evt) => {
+      const pt = svg.createSVGPoint();
+      pt.x = evt.clientX; pt.y = evt.clientY;
+      const ctm = svg.getScreenCTM().inverse();
+      const p = pt.matrixTransform(ctm);
+      const result = isSurprise ? scoreAtSurprise(p.x, p.y) : scoreAt(p.x, p.y);
+      if(navigator.vibrate) navigator.vibrate(12);
+      spawnFlash(holderEl, p.x, p.y);
+      onScore(result.points, result.label, p.x, p.y);
+    });
+  }
+
+  function xMarkMarkup(x, y){
+    const s = 10;
+    return `<g>
+      <line x1="${x-s}" y1="${y-s}" x2="${x+s}" y2="${y+s}" stroke="#000" stroke-width="6" stroke-linecap="round"/>
+      <line x1="${x-s}" y1="${y+s}" x2="${x+s}" y2="${y-s}" stroke="#000" stroke-width="6" stroke-linecap="round"/>
+      <line x1="${x-s}" y1="${y-s}" x2="${x+s}" y2="${y+s}" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+      <line x1="${x-s}" y1="${y+s}" x2="${x+s}" y2="${y-s}" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+    </g>`;
+  }
+
+  function drawMarks(holderEl, hits){
+    const svg = holderEl.querySelector("svg");
+    if(!svg) return;
+    const group = svg.querySelector("#marksGroup");
+    if(!group) return;
+    group.innerHTML = hits.filter(h => h).map(h => xMarkMarkup(h.x, h.y)).join("");
+  }
+
+  function spawnFlash(holderEl, x, y){
+    const svg = holderEl.querySelector("svg");
+    if(!svg) return;
+    const ns = "http://www.w3.org/2000/svg";
+    const g = document.createElementNS(ns, "g");
+    g.innerHTML = `
+      <circle cx="${x}" cy="${y}" r="6" fill="none" stroke="#fff86b" stroke-width="5">
+        <animate attributeName="r" from="6" to="40" dur="0.55s" fill="freeze"/>
+        <animate attributeName="opacity" values="1;1;0.2;1;0" keyTimes="0;0.15;0.4;0.65;1" dur="0.55s" fill="freeze"/>
+      </circle>
+      <circle cx="${x}" cy="${y}" r="6" fill="#fff86b">
+        <animate attributeName="opacity" values="1;0.15;1;0.15;0" dur="0.5s" fill="freeze"/>
+      </circle>`;
+    svg.appendChild(g);
+    setTimeout(() => g.remove(), 600);
+  }
+
+  /* ============================================================
+     STATE
+  ============================================================ */
+  let players = []; // {id, name}
+  let nextId = 1;
+
+  function showScreen(id){
+    document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+    document.getElementById(id).classList.add("active");
+    const topbar = document.getElementById("topbar");
+    if(id === "screen-setup"){ topbar.classList.add("hidden"); }
+    else{ topbar.classList.remove("hidden"); }
+  }
+
+  function setTopbar(title, sub){
+    document.getElementById("tbTitle").textContent = title;
+    document.getElementById("tbSub").textContent = sub || "";
+  }
+
+  /* ============================================================
+     SETUP SCREEN LOGIC
+  ============================================================ */
+  const playerNameInput = document.getElementById("playerNameInput");
+  const addPlayerBtn = document.getElementById("addPlayerBtn");
+  const playerListEl = document.getElementById("playerList");
+  const playerCountEl = document.getElementById("playerCount");
+  const emptyHint = document.getElementById("emptyHint");
+  const btnGame1 = document.getElementById("btnGame1");
+  const btnGame2 = document.getElementById("btnGame2");
+  const btnGame3 = document.getElementById("btnGame3");
+  const btnGame4 = document.getElementById("btnGame4");
+
+  function renderPlayerList(){
+    playerListEl.innerHTML = "";
+    players.forEach((p, idx) => {
+      const li = document.createElement("li");
+      li.innerHTML = `<span class="pnum">${idx+1}</span><span class="pname"></span><button data-id="${p.id}">×</button>`;
+      li.querySelector(".pname").textContent = p.name;
+      playerListEl.appendChild(li);
+    });
+    playerCountEl.textContent = `${players.length} / 10 spelare`;
+    emptyHint.classList.toggle("hidden", players.length > 0);
+    const canAdd = players.length < 10;
+    addPlayerBtn.disabled = !canAdd;
+    playerNameInput.disabled = !canAdd;
+    const canPlay = players.length >= 1;
+    btnGame1.disabled = !canPlay;
+    btnGame2.disabled = !canPlay;
+    btnGame3.disabled = !canPlay;
+    btnGame4.disabled = !canPlay;
+  }
+
+  function addPlayer(){
+    const name = playerNameInput.value.trim();
+    if(!name || players.length >= 10) return;
+    players.push({ id: nextId++, name: name.slice(0,16) });
+    playerNameInput.value = "";
+    renderPlayerList();
+    playerNameInput.focus();
+  }
+
+  addPlayerBtn.addEventListener("click", addPlayer);
+  playerNameInput.addEventListener("keydown", (e) => { if(e.key === "Enter") addPlayer(); });
+  playerListEl.addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-id]");
+    if(!btn) return;
+    const id = Number(btn.dataset.id);
+    players = players.filter(p => p.id !== id);
+    renderPlayerList();
+  });
+
+  document.getElementById("homeBtn").addEventListener("click", () => {
+    if(confirm("Lämna spelet? Förloppet kommer att gå förlorat.")){
+      showScreen("screen-setup");
+    }
+  });
+
+  /* ---------- all-time records (localStorage) ---------- */
+  const RECORDS_KEY = "dartScorerRecords_v1";
+  function loadRecords(){
+    try{
+      const r = JSON.parse(localStorage.getItem(RECORDS_KEY)) || {};
+      return { highscore: r.highscore||[], cd301: r.cd301||[], cd501: r.cd501||[], surprise: r.surprise||[] };
+    }
+    catch(e){ return { highscore:[], cd301:[], cd501:[], surprise:[] }; }
+  }
+  function saveRecords(rec){ localStorage.setItem(RECORDS_KEY, JSON.stringify(rec)); }
+  function addHighScoreRecord(name, score, turns, variant){
+    const rec = loadRecords();
+    const key = variant === "surprise" ? "surprise" : "highscore";
+    rec[key].push({ name, score, turns, date: new Date().toLocaleDateString() });
+    rec[key].sort((a,b)=>b.score-a.score);
+    rec[key] = rec[key].slice(0,5);
+    saveRecords(rec);
+  }
+  function addCountdownRecord(key, name, darts, start){
+    const rec = loadRecords();
+    rec[key].push({ name, darts, date: new Date().toLocaleDateString() });
+    rec[key].sort((a,b)=>a.darts-b.darts);
+    rec[key] = rec[key].slice(0,5);
+    saveRecords(rec);
+  }
+  document.getElementById("recordsToggle").addEventListener("click", () => {
+    const panel = document.getElementById("recordsPanel");
+    panel.classList.toggle("hidden");
+    if(panel.classList.contains("hidden")) return;
+    const rec = loadRecords();
+    function list(arr, render){
+      if(!arr.length) return "<div style='opacity:0.6'>Inga rekord ännu</div>";
+      return "<ol>" + arr.map(render).join("") + "</ol>";
+    }
+    panel.innerHTML = `
+      <h4>🎯 Spel #1 — Högsta Poäng</h4>
+      ${list(rec.highscore, r => `<li>${r.name} — ${r.score} poäng (${r.turns} omgångar)</li>`)}
+      <h4>🔥 301 — Färst Pilar</h4>
+      ${list(rec.cd301, r => `<li>${r.name} — ${r.darts} pilar</li>`)}
+      <h4>💥 501 — Färst Pilar</h4>
+      ${list(rec.cd501, r => `<li>${r.name} — ${r.darts} pilar</li>`)}
+      <h4>🌀 Spel #4 — Dartöverraskning</h4>
+      ${list(rec.surprise, r => `<li>${r.name} — ${r.score} poäng (${r.turns} omgångar)</li>`)}
+    `;
+  });
+
+  /* ============================================================
+     GAME #1 — HIGH SCORE  /  GAME #4 — DART SURPRISE
+     (share the same turn/scoring engine; differ only by board variant)
+  ============================================================ */
+  let g1 = null;
+  let selectedVariant = "standard";
+  let selectedGameLabel = "Spel #1 — Högsta Poäng";
+
+  btnGame1.addEventListener("click", () => {
+    selectedVariant = "standard";
+    selectedGameLabel = "Spel #1 — Högsta Poäng";
+    document.getElementById("g1SetupLabel").textContent = selectedGameLabel;
+    showScreen("screen-g1-setup");
+  });
+  btnGame4.addEventListener("click", () => {
+    selectedVariant = "surprise";
+    selectedGameLabel = "Spel #4 — Dartöverraskning";
+    document.getElementById("g1SetupLabel").textContent = selectedGameLabel;
+    showScreen("screen-g1-setup");
+  });
+  document.getElementById("g1BackBtn").addEventListener("click", () => showScreen("screen-setup"));
+
+  document.querySelectorAll(".turn-opt").forEach(btn => {
+    btn.addEventListener("click", () => {
+      startGame1(Number(btn.dataset.turns));
+    });
+  });
+
+  function startGame1(turns){
+    const scores = {};
+    players.forEach(p => scores[p.id] = 0);
+    g1 = { turnsTotal: turns, turnIndex: 0, playerIndex: 0, dartsThrown: 0, turnPoints: 0, dartLabels: [], dartHits: [], scores, lastAction: null, variant: selectedVariant };
+    setTopbar(selectedGameLabel, `${turns} omgångar`);
+    showScreen("screen-g1-play");
+    mountBoard(document.getElementById("g1BoardHolder"), handleG1Dart, g1.variant);
+    renderG1();
+  }
+
+  function handleG1Dart(points, label, x, y){
+    if(g1.dartsThrown >= 3) return;
+    const pid = players[g1.playerIndex].id;
+    g1.scores[pid] += points;
+    g1.turnPoints += points;
+    g1.dartLabels.push(label);
+    g1.dartHits.push(x !== undefined ? { x, y } : null);
+    g1.dartsThrown++;
+    g1.lastAction = { pid, points };
+    renderG1();
+  }
+
+  document.getElementById("g1MissBtn").addEventListener("click", () => handleG1Dart(0, "BOM"));
+  document.getElementById("g1UndoBtn").addEventListener("click", () => {
+    if(!g1.lastAction || g1.dartsThrown === 0) return;
+    g1.scores[g1.lastAction.pid] -= g1.lastAction.points;
+    g1.turnPoints -= g1.lastAction.points;
+    g1.dartLabels.pop();
+    g1.dartHits.pop();
+    g1.dartsThrown--;
+    g1.lastAction = null;
+    renderG1();
+  });
+  document.getElementById("g1NextBtn").addEventListener("click", () => {
+    g1.dartsThrown = 0; g1.turnPoints = 0; g1.dartLabels = []; g1.dartHits = []; g1.lastAction = null;
+    g1.playerIndex++;
+    if(g1.playerIndex >= players.length){ g1.playerIndex = 0; g1.turnIndex++; }
+    if(g1.turnIndex >= g1.turnsTotal){ finishGame1(); return; }
+    renderG1();
+  });
+
+  function renderG1(){
+    const player = players[g1.playerIndex];
+    document.getElementById("g1PlayerName").textContent = `🎯 ${player.name}s tur`;
+    document.getElementById("g1TurnInfo").textContent = `Omgång ${g1.turnIndex+1} av ${g1.turnsTotal} · Pil ${Math.min(g1.dartsThrown+1,3)} av 3`;
+    const row = document.getElementById("g1DartRow");
+    row.innerHTML = "";
+    for(let i=0;i<3;i++){
+      const chip = document.createElement("div");
+      chip.className = "dart-chip" + (g1.dartLabels[i] === undefined ? " empty" : "");
+      chip.textContent = g1.dartLabels[i] !== undefined ? g1.dartLabels[i] : "—";
+      row.appendChild(chip);
+    }
+    document.getElementById("g1TurnTotal").textContent = `Denna omgång: ${g1.turnPoints} poäng`;
+    drawMarks(document.getElementById("g1BoardHolder"), g1.dartHits);
+    const done = g1.dartsThrown >= 3;
+    document.getElementById("g1MissBtn").disabled = done;
+    document.getElementById("g1UndoBtn").disabled = g1.dartsThrown === 0;
+    document.getElementById("g1BoardHolder").style.pointerEvents = done ? "none" : "auto";
+    document.getElementById("g1BoardHolder").style.opacity = done ? "0.55" : "1";
+    document.getElementById("g1NextBtn").classList.toggle("hidden", !done);
+
+    const isLastOfGame = g1.turnIndex === g1.turnsTotal - 1 && g1.playerIndex === players.length - 1;
+    document.getElementById("g1NextBtn").textContent = (done && isLastOfGame) ? "Avsluta Spel 🏁" : "Nästa Spelare ➜";
+
+    // leaderboard
+    const board = document.getElementById("g1Leaderboard");
+    const sorted = [...players].sort((a,b) => g1.scores[b.id] - g1.scores[a.id]);
+    board.innerHTML = sorted.map((p, idx) => `
+      <div class="mini-row ${p.id === player.id ? 'current' : ''}">
+        <span class="rank">${idx+1}</span><span class="nm">${p.name}</span><span class="val">${g1.scores[p.id]}</span>
+      </div>`).join("");
+  }
+
+  function finishGame1(){
+    const sorted = [...players].sort((a,b) => g1.scores[b.id] - g1.scores[a.id]);
+    const winner = sorted[0];
+    document.getElementById("g1WinnerName").textContent = winner.name;
+    document.getElementById("g1WinnerDetail").textContent = `${g1.scores[winner.id]} poäng över ${g1.turnsTotal} omgångar`;
+    document.getElementById("g1Standings").innerHTML = sorted.map((p, idx) => {
+      const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : (idx+1);
+      return `<div class="srow"><span class="medal">${medal}</span><span class="nm">${p.name}</span><span class="val">${g1.scores[p.id]} poäng</span></div>`;
+    }).join("");
+    addHighScoreRecord(winner.name, g1.scores[winner.id], g1.turnsTotal, g1.variant);
+    setTopbar("Spel #1 — Resultat", "");
+    showScreen("screen-g1-results");
+  }
+
+  document.getElementById("g1PlayAgainBtn").addEventListener("click", () => showScreen("screen-g1-setup"));
+  document.getElementById("g1NewPlayersBtn").addEventListener("click", () => showScreen("screen-setup"));
+
+  /* ============================================================
+     GAME #2 / #3 — COUNTDOWN (301 / 501)
+  ============================================================ */
+  let cd = null;
+
+  btnGame2.addEventListener("click", () => startCountdown(301, "cd301"));
+  btnGame3.addEventListener("click", () => startCountdown(501, "cd501"));
+
+  function startCountdown(start, recKey){
+    const remaining = {}; const dartsUsed = {};
+    players.forEach(p => { remaining[p.id] = start; dartsUsed[p.id] = 0; });
+    cd = {
+      start, recKey, remaining, dartsUsed,
+      playerIndex: 0, dartsThrown: 0, turnPoints: 0, dartLabels: [], dartHits: [],
+      turnStartRemaining: start, lastAction: null, busted: false
+    };
+    setTopbar(`Spel — ${start}`, "Först till exakt 0 vinner");
+    showScreen("screen-cd-play");
+    mountBoard(document.getElementById("cdBoardHolder"), handleCDDart);
+    renderCD();
+  }
+
+  function handleCDDart(points, label, x, y){
+    if(cd.dartsThrown >= 3 || cd.busted) return;
+    const player = players[cd.playerIndex];
+    const newRemaining = cd.remaining[player.id] - points;
+    cd.dartLabels.push(label);
+    cd.dartHits.push(x !== undefined ? { x, y } : null);
+    cd.dartsThrown++;
+    cd.dartsUsed[player.id]++;
+    cd.lastAction = { pid: player.id, points, prevRemaining: cd.remaining[player.id] };
+
+    if(newRemaining < 0 || newRemaining === 1){
+      // bust: revert to start-of-turn value, voids this turn's remaining darts
+      cd.remaining[player.id] = cd.turnStartRemaining;
+      cd.busted = true;
+      cd.dartsThrown = 3; // lock out further darts
+      renderCD();
+      return;
+    }
+
+    cd.remaining[player.id] = newRemaining;
+    cd.turnPoints += points;
+
+    if(newRemaining === 0){
+      renderCD();
+      finishCountdown(player);
+      return;
+    }
+    renderCD();
+  }
+
+  document.getElementById("cdMissBtn").addEventListener("click", () => handleCDDart(0, "BOM"));
+  document.getElementById("cdUndoBtn").addEventListener("click", () => {
+    if(!cd.lastAction || cd.dartsThrown === 0 || cd.busted) return;
+    cd.remaining[cd.lastAction.pid] = cd.lastAction.prevRemaining;
+    cd.turnPoints -= cd.lastAction.points;
+    cd.dartLabels.pop();
+    cd.dartHits.pop();
+    cd.dartsThrown--;
+    cd.dartsUsed[cd.lastAction.pid]--;
+    cd.lastAction = null;
+    renderCD();
+  });
+  document.getElementById("cdNextBtn").addEventListener("click", () => {
+    cd.dartsThrown = 0; cd.turnPoints = 0; cd.dartLabels = []; cd.dartHits = []; cd.lastAction = null; cd.busted = false;
+    cd.playerIndex++;
+    if(cd.playerIndex >= players.length) cd.playerIndex = 0;
+    cd.turnStartRemaining = cd.remaining[players[cd.playerIndex].id];
+    renderCD();
+  });
+
+  function renderCD(){
+    const player = players[cd.playerIndex];
+    document.getElementById("cdPlayerName").textContent = `🎯 ${player.name}s tur`;
+    document.getElementById("cdDartInfo").textContent = `Pil ${Math.min(cd.dartsThrown+1,3)} av 3`;
+    document.getElementById("cdRemaining").textContent = cd.remaining[player.id];
+    document.getElementById("cdBustBanner").classList.toggle("hidden", !cd.busted);
+
+    const row = document.getElementById("cdDartRow");
+    row.innerHTML = "";
+    for(let i=0;i<3;i++){
+      const chip = document.createElement("div");
+      chip.className = "dart-chip" + (cd.dartLabels[i] === undefined ? " empty" : "");
+      chip.textContent = cd.dartLabels[i] !== undefined ? cd.dartLabels[i] : "—";
+      row.appendChild(chip);
+    }
+    document.getElementById("cdTurnTotal").textContent = cd.busted ? "Omgång ogiltig" : `Denna omgång: ${cd.turnPoints} poäng`;
+    drawMarks(document.getElementById("cdBoardHolder"), cd.dartHits);
+
+    const done = cd.dartsThrown >= 3;
+    document.getElementById("cdMissBtn").disabled = done;
+    document.getElementById("cdUndoBtn").disabled = cd.dartsThrown === 0 || cd.busted;
+    document.getElementById("cdBoardHolder").style.pointerEvents = done ? "none" : "auto";
+    document.getElementById("cdBoardHolder").style.opacity = done ? "0.55" : "1";
+    document.getElementById("cdNextBtn").classList.toggle("hidden", !done);
+
+    const board = document.getElementById("cdLeaderboard");
+    const sorted = [...players].sort((a,b) => cd.remaining[a.id] - cd.remaining[b.id]);
+    board.innerHTML = sorted.map((p, idx) => `
+      <div class="mini-row ${p.id === player.id ? 'current' : ''}">
+        <span class="rank">${idx+1}</span><span class="nm">${p.name}</span><span class="val">${cd.remaining[p.id]}</span>
+      </div>`).join("");
+  }
+
+  function finishCountdown(winner){
+    const dartsCount = cd.dartsUsed[winner.id];
+    document.getElementById("cdWinnerName").textContent = winner.name;
+    document.getElementById("cdWinnerDetail").textContent = `Avslutade från ${cd.start} på ${dartsCount} pilar!`;
+    const sorted = [...players].sort((a,b) => cd.remaining[a.id] - cd.remaining[b.id]);
+    document.getElementById("cdStandings").innerHTML = sorted.map((p, idx) => {
+      const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : (idx+1);
+      const tag = p.id === winner.id ? "VINNARE" : `${cd.remaining[p.id]} kvar`;
+      return `<div class="srow"><span class="medal">${medal}</span><span class="nm">${p.name}</span><span class="val">${tag}</span></div>`;
+    }).join("");
+    addCountdownRecord(cd.recKey, winner.name, dartsCount, cd.start);
+    setTopbar(`Spel — ${cd.start} Resultat`, "");
+    showScreen("screen-cd-results");
+  }
+
+  document.getElementById("cdPlayAgainBtn").addEventListener("click", () => startCountdown(cd.start, cd.recKey));
+  document.getElementById("cdNewPlayersBtn").addEventListener("click", () => showScreen("screen-setup"));
+
+  /* ---------- init ---------- */
+  renderPlayerList();
+})();
+</script>
+</body>
+</html>
